@@ -1,0 +1,37 @@
+trigger:
+  branches:
+    include:
+      - main
+pool:
+  vmImage: 'ubuntu-latest'
+steps:
+# ✅ Checkout the code
+- checkout: self
+# ⚙️ Maven Build + Test using Maven@4
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'clean install'
+    mavenOptions: '-Xmx1024m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '17'  # Changed to '17' to match your project's Java version
+    publishJUnitResults: true
+    testResultsFiles: '**/TEST-*.xml'  # More general pattern for JUnit test results
+# 📊 Publish test results to Azure DevOps UI
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'  # Explicitly specify JUnit format
+    testResultsFiles: |
+      **/TEST-*.xml
+      **/test-results/*.xml
+    mergeTestResults: true  # Merge all test results
+    testRunTitle: 'Résultats des tests unitaires'
+# 📦 Publish the build artifact (WAR file for Jakarta EE)
+- task: CopyFiles@2
+  inputs:
+    contents: '**/target/*.?(war|jar)'  # Copy both WAR and JAR files
+    targetFolder: '$(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'drop'
